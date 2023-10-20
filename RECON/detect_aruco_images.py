@@ -6,7 +6,7 @@ import numpy as np
 import argparse
 import cv2
 
-outputSize = 600  #change if needed to the need of the color analysis
+outputSize = 800  #change if needed to the need of the color analysis
 
 # remove argument parser when dealing with camera input
 ap = argparse.ArgumentParser()
