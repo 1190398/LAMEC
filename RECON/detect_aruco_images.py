@@ -28,33 +28,39 @@ cornerCoordinates = []
 
 # calculate the markers center
 for i in range(len(corners)):
-    cornerCoordinates.append([
-		int(np.mean(corners[i][0][:, 0])),
-        int(np.mean(corners[i][0][:, 1]))
-	])
+  cornerCoordinates.append([
+    int(np.mean(corners[i][0][:, 0])),
+    int(np.mean(corners[i][0][:, 1]))
+  ])
     
 # init distortion variables
-#pts1=np.float32(cornerCoordinates)
-#pts2=np.float32([[0,0],[width,0],[0,height],[width,height]])
+pts1=np.float32(cornerCoordinates)
+pts2=np.float32([[0,0],[width,0],[0,height],[width,height]])
 
 # Define source and destination points as NumPy arrays with float32 data type
-pts1 = np.array(cornerCoordinates, dtype=np.float32)
-pts2 = np.array([[0, 0], [width, 0], [0, height], [width, height]], dtype=np.float32)
+#pts1 = np.array(cornerCoordinates, dtype=np.float32)
+#pts2 = np.array([[0, 0], [width, 0], [0, height], [width, height]], dtype=np.float32)
 
-print("pts1:", pts1)
-print("pts2:", pts2)
 
-# distort image to square
-matrix=cv2.getPerspectiveTransform(pts1,pts2)
-output=cv2.warpPerspective(image,matrix,(width,height))
+#print("pts1:", pts1)
+#print("pts2:", pts2)
 
-# resize to 600*600 for square presentation
-output = cv2.resize(output, (outputSize, outputSize), interpolation=cv2.INTER_CUBIC)
+print("Detected ids: ", ids)
 
-# remove when developing color analysis
-cv2.imshow("Image", output)
+if len(cornerCoordinates) != 4:
+  print("Error: there were only detected ", len(cornerCoordinates), ' markers')
+else:
+  # distort image to square
+  matrix=cv2.getPerspectiveTransform(pts1,pts2)
+  output=cv2.warpPerspective(image,matrix,(width,height))
 
-# remove when developing color analysis
-cv2.imwrite("output_sample.png",output)
+  # resize to 600*600 for square presentation
+  output = cv2.resize(output, (outputSize, outputSize), interpolation=cv2.INTER_CUBIC)
+
+  # remove when developing color analysis
+  cv2.imshow("Image", output)
+
+  # remove when developing color analysis
+  cv2.imwrite("output_sample.png",output)
 
 cv2.waitKey(0)
