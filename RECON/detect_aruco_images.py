@@ -6,7 +6,7 @@ import numpy as np
 import argparse
 import cv2
 
-outputSize = 800  #change if needed to the need of the color analysis
+outputSize = 600 #change if needed to the need of the color analysis
 
 # remove argument parser when dealing with camera input
 ap = argparse.ArgumentParser()
@@ -34,8 +34,15 @@ for i in range(len(corners)):
 	])
     
 # init distortion variables
-pts1=np.float32(cornerCoordinates)
-pts2=np.float32([[0,0],[width,0],[0,height],[width,height]])
+#pts1=np.float32(cornerCoordinates)
+#pts2=np.float32([[0,0],[width,0],[0,height],[width,height]])
+
+# Define source and destination points as NumPy arrays with float32 data type
+pts1 = np.array(cornerCoordinates, dtype=np.float32)
+pts2 = np.array([[0, 0], [width, 0], [0, height], [width, height]], dtype=np.float32)
+
+print("pts1:", pts1)
+print("pts2:", pts2)
 
 # distort image to square
 matrix=cv2.getPerspectiveTransform(pts1,pts2)
@@ -49,6 +56,5 @@ cv2.imshow("Image", output)
 
 # remove when developing color analysis
 cv2.imwrite("output_sample.png",output)
-
 
 cv2.waitKey(0)
