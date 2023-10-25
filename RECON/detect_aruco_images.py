@@ -1,6 +1,9 @@
 import numpy as np
 import argparse
 import cv2
+import image_slicer
+from PIL import Image
+import os
 
 outputSize = 600  # Change if needed to the desired output size
 
@@ -73,9 +76,35 @@ def process_image(image):
 
             # Display the result
             cv2.imshow("Image", output)
-            cv2.waitKey(0)
+            #cv2.waitKey(0)
+            
+            # Convert the NumPy array to a Pillow Image
+            output_pillow = Image.fromarray(output)
+            # Specify the coordinates of the zoomed-in region (left, upper, right, lower)
+            zoomed_region = (20, 23, 570, 600)  # Adjust these values as needed
+            # Crop the image to the specified region
+            zoomed_image = output_pillow.crop(zoomed_region)
+            # Convert the Pillow Image to a NumPy array
+            zoomed_image_np = np.array(zoomed_image)
+            # Save or display the zoomed-in image
+            cv2.imwrite("images_of_each_square/zoomed_image.jpg", zoomed_image_np)
+
+# Function to calculate average color
+def calculate_average_color(image):
+    # Define the rows and columns to extract
+    odd_rows = [1, 3, 5, 7]  # Odd-numbered rows
+    odd_cols = [1, 3, 5, 7]  # Odd-numbered columns
+    even_rows = [2, 4, 6, 8]  # Even-numbered rows
+    even_cols = [2, 4, 6, 8]  # Even-numbered columns
+    # Resize the image for more efficient processing
+    resized_image = cv2.resize(image, (50, 50))
+    # Calculate the average color
+    average_color = np.mean(resized_image, axis=(0, 1))
+    return average_color
 
 def main():
+
+    '''
     cameras = list_available_cameras()
 
     if cameras:
@@ -101,13 +130,52 @@ def main():
 
             cap.release()
             cv2.destroyAllWindows()
+'''
 
-            image = capture_image(cameras[selected_camera][0])
-            process_image(image)
-        else:
+    #image = capture_image(cameras[selected_camera][0])
+    image=cv2.imread("./Images/teste_damas_verdes1.jpg")
+    process_image(image)
+    
+    #Slice the image in 8x8
+    image_slicer.slice("images_of_each_square/zoomed_image.jpg", 64)
+    
+    sliced_images_directory = 'images_of_each_square' #Directory containing the saved images
+    color_data = [] #Initialize a list to store color data
+    
+    # Define the rows and columns to extract
+    odd_rows = [1, 3, 5, 7]  # Odd-numbered rows
+    odd_cols = [1, 3, 5, 7]  # Odd-numbered columns
+    even_rows = [2, 4, 6, 8]  # Even-numbered rows
+    even_cols = [2, 4, 6, 8]  # Even-numbered columns
+
+    # Loop through all image files in the directory
+    for filename in os.listdir(sliced_images_directory):
+        if filename.endswith(".png"):
+            # Load the image
+            image_path = os.path.join(sliced_images_directory, filename)
+            image = cv2.imread(image_path)
+             # Get the row and column number from the filename
+            parts = filename.split("_")
+            row, col = int(parts[2]), int(parts[3].split(".")[0])
+            
+            # Check if the row and column are in the specified sets
+            if (row in odd_rows and col in odd_cols) or (row in even_rows and col in even_cols):
+                # Load the image
+                image_path = os.path.join(sliced_images_directory, filename)
+                image = cv2.imread(image_path)
+                average_color = calculate_average_color(image) #Calculate the average color of the image
+                color_data.append((filename, average_color)) #Store the color data
+
+    # Display or analyze the color data
+    for filename, average_color in color_data:
+        print(f"Image: {filename}, Average Color: {average_color}")
+
+
+'''        else:
             print("Invalid camera selection.")
     else:
         print("No cameras are available.")
+'''
 
 if __name__ == "__main__":
     main()
