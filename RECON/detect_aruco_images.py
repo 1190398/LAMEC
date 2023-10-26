@@ -1,5 +1,4 @@
 import numpy as np
-import argparse
 import cv2
 import image_slicer
 from PIL import Image
@@ -36,8 +35,27 @@ def capture_image(camera_index):
     ret, frame = cap.read()
     cap.release()
 
+    cv2.imshow("Image", frame)
+
+    # Convert the image to a float32 format for color correction
+    captured_image_float = frame.astype(np.float32)
+
+    # Calculate the average color for the entire image
+    avg_color = captured_image_float.mean(axis=(0, 1))
+
+    # Calculate the scaling factors for each channel based on the gray world assumption
+    scale_factors = 128.0 / avg_color
+
+    # Apply the scaling factors to the image
+    corrected_image = np.clip(captured_image_float * scale_factors, 0, 255).astype(np.uint8)
+
+
+    cv2.imshow("Image2", corrected_image)
+
+    cv2.waitKey(0)
+
     if ret:
-        return frame
+        return corrected_image
     else:
         print(f"Error capturing image from Camera {camera_index}.")
         return None
@@ -53,20 +71,32 @@ def process_image(image):
         corners, ids, _ = cv2.aruco.detectMarkers(image, arucoDict, parameters=arucoParams)
 
         # Calculate the marker centers
-        cornerCoordinates = []
+        cornerss = []
         for i in range(len(corners)):
-            cornerCoordinates.append([
-                int(np.mean(corners[i][0][:, 0])),
-                int(np.mean(corners[i][0][:, 1]))
-            ])
+            cornerss.append({
+                'coordinates':
+                [
+                    int(np.mean(corners[i][0][:, 0])),
+                    int(np.mean(corners[i][0][:, 1]))
+                ],
+                'id': ids[i]
+            })
+
+        ordered = sorted(cornerss, key=lambda x: x['id'])
+
+        cornerCoordinates = []
+        for i in range(len(ordered)):
+            cornerCoordinates.append(
+                ordered[i]['coordinates']
+            )  
 
         if len(cornerCoordinates) != 4:
             print("Error: There were only detected", len(cornerCoordinates), 'markers')
         else:
             # Init distortion variables
             pts1 = np.float32(cornerCoordinates)
-            pts2 = np.float32([[0, 0], [width, 0], [0, height], [width, height]])
-
+            pts2 = np.float32([[0, 0], [0, height], [width, height], [width, 0]])
+                
             # Distort image to square
             matrix = cv2.getPerspectiveTransform(pts1, pts2)
             output = cv2.warpPerspective(image, matrix, (width, height))
@@ -76,17 +106,21 @@ def process_image(image):
 
             # Display the result
             cv2.imshow("Image", output)
-            #cv2.waitKey(0)
+            
             
             # Convert the NumPy array to a Pillow Image
             output_pillow = Image.fromarray(output)
             # Specify the coordinates of the zoomed-in region (left, upper, right, lower)
-            zoomed_region = (20, 23, 570, 600)  # Adjust these values as needed
+            zoomed_region = (20, 23, 580, 580)  # Adjust these values as needed
             # Crop the image to the specified region
             zoomed_image = output_pillow.crop(zoomed_region)
             # Convert the Pillow Image to a NumPy array
             zoomed_image_np = np.array(zoomed_image)
             # Save or display the zoomed-in image
+
+            cv2.imshow("Image2", zoomed_image_np)
+
+            cv2.waitKey(0)
             cv2.imwrite("images_of_each_square/zoomed_image.jpg", zoomed_image_np)
 
 # Function to calculate average color
@@ -104,7 +138,6 @@ def calculate_average_color(image):
 
 def main():
 
-    '''
     cameras = list_available_cameras()
 
     if cameras:
@@ -130,52 +163,51 @@ def main():
 
             cap.release()
             cv2.destroyAllWindows()
-'''
 
-    #image = capture_image(cameras[selected_camera][0])
-    image=cv2.imread("./Images/teste_damas_verdes1.jpg")
-    process_image(image)
-    
-    #Slice the image in 8x8
-    image_slicer.slice("images_of_each_square/zoomed_image.jpg", 64)
-    
-    sliced_images_directory = 'images_of_each_square' #Directory containing the saved images
-    color_data = [] #Initialize a list to store color data
-    
-    # Define the rows and columns to extract
-    odd_rows = [1, 3, 5, 7]  # Odd-numbered rows
-    odd_cols = [1, 3, 5, 7]  # Odd-numbered columns
-    even_rows = [2, 4, 6, 8]  # Even-numbered rows
-    even_cols = [2, 4, 6, 8]  # Even-numbered columns
-
-    # Loop through all image files in the directory
-    for filename in os.listdir(sliced_images_directory):
-        if filename.endswith(".png"):
-            # Load the image
-            image_path = os.path.join(sliced_images_directory, filename)
-            image = cv2.imread(image_path)
-             # Get the row and column number from the filename
-            parts = filename.split("_")
-            row, col = int(parts[2]), int(parts[3].split(".")[0])
+            image = capture_image(cameras[selected_camera][0])
+            #image=cv2.imread("./Images/teste2.jpeg")
+            process_image(image)
             
-            # Check if the row and column are in the specified sets
-            if (row in odd_rows and col in odd_cols) or (row in even_rows and col in even_cols):
-                # Load the image
-                image_path = os.path.join(sliced_images_directory, filename)
-                image = cv2.imread(image_path)
-                average_color = calculate_average_color(image) #Calculate the average color of the image
-                color_data.append((filename, average_color)) #Store the color data
+            #Slice the image in 8x8
+            image_slicer.slice("images_of_each_square/zoomed_image.jpg", 64)
+            
+            sliced_images_directory = 'images_of_each_square' #Directory containing the saved images
+            color_data = [] #Initialize a list to store color data
+            
+            # Define the rows and columns to extract
+            odd_rows = [1, 3, 5, 7]  # Odd-numbered rows
+            odd_cols = [1, 3, 5, 7]  # Odd-numbered columns
+            even_rows = [2, 4, 6, 8]  # Even-numbered rows
+            even_cols = [2, 4, 6, 8]  # Even-numbered columns
 
-    # Display or analyze the color data
-    for filename, average_color in color_data:
-        print(f"Image: {filename}, Average Color: {average_color}")
+            # Loop through all image files in the directory
+            for filename in os.listdir(sliced_images_directory):
+                if filename.endswith(".png"):
+                    # Load the image
+                    image_path = os.path.join(sliced_images_directory, filename)
+                    image = cv2.imread(image_path)
+                    # Get the row and column number from the filename
+                    parts = filename.split("_")
+                    row, col = int(parts[2]), int(parts[3].split(".")[0])
+                    
+                    # Check if the row and column are in the specified sets
+                    if (row in odd_rows and col in odd_cols) or (row in even_rows and col in even_cols):
+                        # Load the image
+                        image_path = os.path.join(sliced_images_directory, filename)
+                        image = cv2.imread(image_path)
+                        average_color = calculate_average_color(image) #Calculate the average color of the image
+                        color_data.append((filename, average_color)) #Store the color data
+
+            # Display or analyze the color data
+            for filename, average_color in color_data:
+                print(f"Image: {filename}, Average Color: {average_color}")
 
 
-'''        else:
+        else:
             print("Invalid camera selection.")
     else:
         print("No cameras are available.")
-'''
+
 
 if __name__ == "__main__":
     main()
