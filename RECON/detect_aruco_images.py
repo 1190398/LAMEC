@@ -66,7 +66,7 @@ def process_image(image):
         height, width, _ = image.shape
 
         # ArUco marker detection
-        arucoDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
+        arucoDict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_ARUCO_ORIGINAL)
         arucoParams = cv2.aruco.DetectorParameters_create()
         corners, ids, _ = cv2.aruco.detectMarkers(image, arucoDict, parameters=arucoParams)
 
