@@ -1,106 +1,89 @@
-# checkers_board.py
+# checkers_board_functions.py
 import tkinter as tk
 
-class CheckersBoard(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title("Checkers Board")
-        self.fullscreen = False
-        self.default_width = 800
-        self.default_height = 600
-        self.geometry("800x600")
-        self.configure(bg="#202020")
-        self.create_board()
-        self.bind("<Configure>", self.on_window_resize)
-        self.bind("<F11>", self.toggle_fullscreen)
-        self.bind("<Escape>", self.exit_fullscreen)
-        self.checker_matrix = None
+# Global color variables
+BACKGROUND_COLOR = "#111111"
+DARK_SQUARE_COLOR = "#8b4513"
+LIGHT_SQUARE_COLOR = "#deb887"
+CHECKER_PLAYER1_COLOR = "#202020"
+CHECKER_PLAYER2_COLOR = "#f5f5f5"
+CHECKER_OUTLINE_COLOR = "black"
 
-    def create_board(self):
-        self.board_margin = 20
-        self.update_board_size()
+def create_board(root, board_margin=20):
+    margin_frame = tk.Frame(root, bg=BACKGROUND_COLOR, padx=board_margin, pady=board_margin)
+    margin_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.board = tk.Canvas(self, width=self.board_width, height=self.board_height, bg="#111111")  # Dark gray background
-        self.board.place(x=self.board_margin, y=self.board_margin)
+    board = tk.Canvas(margin_frame, bg=BACKGROUND_COLOR, highlightthickness=0)
+    board.pack(fill=tk.BOTH, expand=True)
 
-        for row in range(8):
-            for col in range(8):
-                color = "#8b4513" if (row + col) % 2 == 1 else "#deb887"
-                square_size = self.board_width / 8
-                x1, y1 = col * square_size, row * square_size
-                x2, y2 = x1 + square_size, y1 + square_size
-                self.board.create_rectangle(x1, y1, x2, y2, fill=color, outline="black")
+    root.bind("<Configure>", lambda event: redraw_board(board))
 
-    def update_board_size(self):
-        window_width = self.winfo_width()
-        window_height = self.winfo_height()
+    redraw_board(board)
+    return board
 
-        board_size = min(window_width, window_height) - 2 * self.board_margin
-        self.board_width = board_size
-        self.board_height = board_size
+def redraw_board(board, checker_matrix=None):
+    board.delete("all")
+    board_width = board.winfo_width()
+    board_height = board.winfo_height()
 
-    def on_window_resize(self, event):
-        self.update_board_size()
-        self.board.config(width=self.board_width, height=self.board_height)
-        self.board.place(x=self.board_margin, y=self.board_margin)
-        self.redraw_board()
+    draw_checkers(board, checker_matrix, board_width, board_height)
 
-    def toggle_fullscreen(self, event):
-        self.fullscreen = not self.fullscreen
-        self.attributes('-fullscreen', self.fullscreen)
-        if not self.fullscreen:
-            self.geometry(f"{self.default_width}x{self.default_height}")
 
-    def exit_fullscreen(self, event):
-        self.fullscreen = False
-        self.attributes('-fullscreen', False)
-        self.geometry(f"{self.default_width}x{self.default_height}")
+def draw_checkers(board, checker_matrix, board_width, board_height):
+    square_size = min(board_width, board_height) / 8
 
-    def redraw_board(self):
-        self.board.delete("all")
-        self.draw_checkers()
+    for row in range(8):
+        for col in range(8):
+            color = DARK_SQUARE_COLOR if (row + col) % 2 == 1 else LIGHT_SQUARE_COLOR
+            x1, y1 = col * square_size, row * square_size
+            x2, y2 = x1 + square_size, y1 + square_size
+            board.create_rectangle(x1, y1, x2, y2, fill=color, outline=CHECKER_OUTLINE_COLOR)
 
-    def draw_checkers(self, checker_matrix=None):
-        square_size = self.board_width / 8
-        if checker_matrix is None:
-            checker_matrix = get_default_matrix()
-
-        for row in range(8):
-            for col in range(8):
-                color = "#8b4513" if (row + col) % 2 == 1 else "#deb887"
-                x1, y1 = col * square_size, row * square_size
-                x2, y2 = x1 + square_size, y1 + square_size
-                self.board.create_rectangle(x1, y1, x2, y2, fill=color, outline="black")
-
+            if checker_matrix is not None:
                 checker = checker_matrix[row][col]
-                if checker == 1:
-                    self.place_checker(row, col, color="#202020")
-                elif checker == 2:
-                    self.place_checker(row, col, color="#f5f5f5")
+                if checker != 0:
+                    place_checker(board, row, col, square_size, checker)
 
-    def place_checker(self, row, col, color):
-        square_size = self.board_width / 8
-        checker_width = 0.8 * square_size
-        x = col * square_size + (square_size - checker_width) / 2
-        y = row * square_size + (square_size - checker_width) / 2
-        self.board.create_oval(x, y, x + checker_width, y + checker_width, fill=color, outline="black")
+def place_checker(board, row, col, square_size, checker_type):
+    checker_width = 0.8 * square_size
+    x = col * square_size + (square_size - checker_width) / 2
+    y = row * square_size + (square_size - checker_width) / 2
 
-    def update_checkers(self, checker_matrix):
-        self.checker_matrix = checker_matrix
-        self.redraw_board()
+    color = None
 
-    def run(self):
-        self.mainloop()
+    if checker_type == 1:
+        color = CHECKER_PLAYER1_COLOR
+    elif checker_type == 2:
+        color = CHECKER_PLAYER2_COLOR
+    elif checker_type == 3:
+        color = CHECKER_PLAYER1_COLOR
+    elif checker_type == 4:
+        color = CHECKER_PLAYER2_COLOR
+
+    board.create_oval(x, y, x + checker_width, y + checker_width, fill=color, outline=CHECKER_OUTLINE_COLOR)
+
+    if checker_type - 2 > 0:
+        draw_crown(board, x, y, checker_width)
+
+def draw_crown(board, x, y, checker_width):
+    crown_width = 0.6 * checker_width
+    crown_height = 0.3 * checker_width
+
+    x_crown = x + checker_width / 2
+    y_crown = y + checker_width / 2
+
+    board.create_polygon(
+        x_crown - crown_width / 2, y_crown + crown_height / 2,
+        x_crown - 0.4 * crown_width, y_crown + crown_height / 2 - crown_height,
+        x_crown - 0.2 * crown_width, y_crown + crown_height / 2 - crown_height,
+        x_crown, y_crown + crown_height / 2 - 1.5 * crown_height,
+        x_crown + 0.2 * crown_width, y_crown + crown_height / 2 - crown_height,
+        x_crown + 0.4 * crown_width, y_crown + crown_height / 2 - crown_height,
+        x_crown + crown_width / 2, y_crown + crown_height / 2,
+        fill="gold", outline="black"
+    )
+
+def run_mainloop(root):
+    root.mainloop()
 
 
-def get_default_matrix():
-    return [
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-    ]
