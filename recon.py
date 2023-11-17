@@ -1,8 +1,7 @@
+
 import cv2
 import numpy as np
 import math
-
-from util.drawBoard import CheckersBoard
 
 
 # Function to detect and draw straight edges in an image
@@ -17,7 +16,7 @@ def detect_straight_edges_in_image(image):
     edges = cv2.Canny(blurred, 50, 150, apertureSize=3)
 
     # Perform Hough Line Transform
-    lines = cv2.HoughLines(edges, 1, np.pi / 180, 125)
+    lines = cv2.HoughLines(edges, 1, np.pi / 180, 80)
     
     lines_coor = []
 
@@ -45,9 +44,7 @@ def detect_straight_edges_in_image(image):
         
     else:
         print("No straight edges detected")
-        return []
-
-    
+        return []    
 
 def detect_board_edges(lines, width, height):
     closest_lines = []
@@ -91,7 +88,6 @@ def detect_board_edges(lines, width, height):
 
     return closest_lines
 
-
 def find_intersections(closest_lines):
     intersections = []
 
@@ -118,10 +114,9 @@ def find_intersections(closest_lines):
 
     return intersections
 
-
 # Function to capture an image from the webcam feed
 def capture_image_from_webcam():
-    cap = cv2.VideoCapture(1)  # Use webcam 2 (you can change the index to match your webcam)
+    cap = cv2.VideoCapture(1)
 
     while True:
         ret, frame = cap.read()
@@ -137,12 +132,14 @@ def capture_image_from_webcam():
             cv2.destroyAllWindows()
             return frame
         
-        lines = detect_straight_edges_in_image(frame)
-
         width, height, channels = frame.shape
+        
+        lines = detect_straight_edges_in_image(frame)
+        closest_lines = detect_board_edges(lines, width, height)
 
-        for line in lines:
-            cv2.line(frame, (line["x1"], line["y1"]), (line["x2"], line["y2"]), (0, 255, 0), 1)
+        for line in closest_lines:
+            if line is not None:
+                cv2.line(frame, (line["x1"], line["y1"]), (line["x2"], line["y2"]), (0, 255, 0), 1)
 
         cv2.circle(frame, (height//2, width//2), 2, (0, 255, 0), -1)
 
@@ -238,61 +235,51 @@ def rgb_to_grayscale(color):
     grayscale_value = 0.299 * value1 + 0.587 * value2 + 0.114 * value3
     return int(grayscale_value)
 
-# Main function to perform the image capture, analysis, and presentation
+
+
 def main():
-    checkers_board = CheckersBoard()
-
     captured_image = capture_image_from_webcam()
-
     if captured_image is not None:
         lines = detect_straight_edges_in_image(captured_image)
-
         width, height, channels = captured_image.shape
-
         closest_lines = detect_board_edges(lines, width, height)
-
         corners = find_intersections(closest_lines)
-
         ordered_corners = order_corners(corners, width, height)
-
         image = get_board(captured_image, ordered_corners, width, height)
 
-        width, height, channels = image.shape
 
+
+        cv2.imshow("Webcam Feed", image)
+
+        cv2.waitKey(0)
+
+        width, height, channels = image.shape
         tiles = divide_image_into_tiles(image, width, height)
 
+        checker_matrix = np.zeros((8, 8), dtype=int)
 
-        checker_matrix = [
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0]
-        ]
-        
         for i, tile in enumerate(tiles):
             result_tile, object_count, objects = analyze_tile_for_round_object(tile)
 
-            if(object_count > 0):
+            if object_count > 0:
                 circle = objects[0, 0]
                 x, y, radius = circle
 
-                color = rgb_to_grayscale(analyse_checker_color(tile, (x, y), radius*0.9))
+                color = rgb_to_grayscale(analyse_checker_color(tile, (x, y), radius * 0.9))
 
-                if(color < 70):
-                    checker_matrix[i//8][i%8] = 1
-                else: 
-                    if(color > 220):
-                        checker_matrix[i//8][i%8] = 2
-            else:
-                checker_matrix[i//8][i%8] = 0
+                print(color)
 
-        checkers_board.update_checkers(checker_matrix)
+                if color < 70:
+                    checker_matrix[i // 8][i % 8] = 1
+                else:
+                    if color > 150:
+                        checker_matrix[i // 8][i % 8] = 2
 
+        print(checker_matrix)
+
+        return checker_matrix
     else:
         print("Image capture failed")
+
 
 main()

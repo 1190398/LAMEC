@@ -1,3 +1,4 @@
+# checkers_board.py
 import tkinter as tk
 
 class CheckersBoard(tk.Tk):
@@ -13,6 +14,7 @@ class CheckersBoard(tk.Tk):
         self.bind("<Configure>", self.on_window_resize)
         self.bind("<F11>", self.toggle_fullscreen)
         self.bind("<Escape>", self.exit_fullscreen)
+        self.checker_matrix = None
 
     def create_board(self):
         self.board_margin = 20
@@ -55,22 +57,13 @@ class CheckersBoard(tk.Tk):
         self.geometry(f"{self.default_width}x{self.default_height}")
 
     def redraw_board(self):
-        self.board.delete("all")  # Clear existing rectangles
+        self.board.delete("all")
         self.draw_checkers()
 
     def draw_checkers(self, checker_matrix=None):
         square_size = self.board_width / 8
         if checker_matrix is None:
-            checker_matrix = [
-                [0, 1, 0, 1, 0, 1, 0, 1],
-                [1, 0, 1, 0, 1, 0, 1, 0],
-                [0, 1, 0, 1, 0, 1, 0, 1],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [0, 0, 0, 0, 0, 0, 0, 0],
-                [2, 0, 2, 0, 2, 0, 2, 0],
-                [0, 2, 0, 2, 0, 2, 0, 2],
-                [2, 0, 2, 0, 2, 0, 2, 0]
-            ]
+            checker_matrix = get_default_matrix()
 
         for row in range(8):
             for col in range(8):
@@ -85,7 +78,6 @@ class CheckersBoard(tk.Tk):
                 elif checker == 2:
                     self.place_checker(row, col, color="#f5f5f5")
 
-
     def place_checker(self, row, col, color):
         square_size = self.board_width / 8
         checker_width = 0.8 * square_size
@@ -94,8 +86,21 @@ class CheckersBoard(tk.Tk):
         self.board.create_oval(x, y, x + checker_width, y + checker_width, fill=color, outline="black")
 
     def update_checkers(self, checker_matrix):
+        self.checker_matrix = checker_matrix
         self.redraw_board()
-        self.draw_checkers(checker_matrix)
 
     def run(self):
         self.mainloop()
+
+
+def get_default_matrix():
+    return [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+    ]
