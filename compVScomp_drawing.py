@@ -21,7 +21,7 @@ board = create_board(root)
 # Initialize the board with the sample matrix
 redraw_board(board, sample_board)
 
-playDelay = 300
+playDelay = 1000
 
 player = random.choice([1, 2])
 score1 = 0

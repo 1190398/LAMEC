@@ -33,7 +33,7 @@ while True:
         elif player == 2:
             player = 1
 
-        #print('Best move: ', best_move)
+        ##print('Best move: ', best_move)
 
         sample_board = make_move(sample_board, best_move)
 

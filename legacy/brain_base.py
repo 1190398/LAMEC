@@ -4,8 +4,7 @@ import random
 ## LOWER PART OF THE MATRIX IS ALWAYS 0
 
 ##THIS IMPLEMENTS THE CHECKERS GAME
-    ## DOES: KINGS
-    ## DOES NOT: MULTI EATING
+    ## DOES: KINGS; MULTI EATING
 
 # Constants for players
 PLAYER_1 = 1
@@ -13,8 +12,11 @@ PLAYER_2 = 2
 KING_1 = 3
 KING_2 = 4
 
-def evaluate(board):
-    # Simple evaluation function for demonstration
+# Example of setting global variables
+search_depth = 6
+mandatory_eating = True  # Set to True to make eating a piece mandatory
+
+def evaluate(board, current_player):
     score_player_1 = 0
     score_player_2 = 0
 
@@ -31,6 +33,10 @@ def evaluate(board):
                 score_player_2 += eatingScore
             elif cell == KING_2:
                 score_player_2 += kingScore
+
+    if current_player == PLAYER_2:
+    # Reverse scores if it's Player 2's turn
+        score_player_1, score_player_2 = score_player_2, score_player_1
 
     return score_player_1 - score_player_2
 
@@ -63,17 +69,40 @@ def get_eating_moves(board, player, row, col):
     else:
         directions = [(2, -2), (2, 2), (-2, -2), (-2, 2)]
 
-    # For king pieces, add additional directions
-    if board[row][col] in [KING_1, KING_2]:
-        directions.extend([(i, j) for i, j in directions])
-
     for dir_row, dir_col in directions:
         new_row, new_col = row + dir_row, col + dir_col
         mid_row, mid_col = row + dir_row // 2, col + dir_col // 2
 
-        if 0 <= new_row < 8 and 0 <= new_col < 8 and board[new_row][new_col] == 0 and 0 <= mid_row < 8 and 0 <= mid_col < 8 and board[mid_row][mid_col] != 0 and board[mid_row][mid_col] != player:
+        if 0 <= new_row < 8 and 0 <= new_col < 8 and board[new_row][new_col] == 0 and 0 <= mid_row < 8 and 0 <= mid_col < 8 and board[mid_row][mid_col] != 0 and board[mid_row][mid_col] != board[row][col] and board[mid_row][mid_col] != board[row][col]-2 and board[mid_row][mid_col] != board[row][col]+2:
             moves.append(((row, col), (new_row, new_col)))
 
+    return moves
+
+def get_recursive_eating_moves(board, player, row, col):
+    moves = []
+
+    eating_moves = get_eating_moves(board, player, row, col)
+    for move in eating_moves:
+        new_matrix = make_move(board, move)
+        recursive_moves = get_recursive_eating_moves(new_matrix, player, move[1][0], move[1][1])
+
+        # Flatten the nested tuple structure
+        if recursive_moves:
+            moves.append((move,) + recursive_moves[0])
+        else:
+            moves.append((move,))
+
+    return moves
+
+def get_multi_moves(board, player, row, col):
+    moves = []
+    recursive_moves = get_recursive_eating_moves(board, player, row, col)
+    for move in recursive_moves:
+        updated_move = []
+        updated_move.append(move[0][0])
+        for submove in move:
+            updated_move.append(submove[1])
+        moves.append(tuple(updated_move))
     return moves
 
 
@@ -86,7 +115,7 @@ def get_possible_moves(board, player):
         for j in range(8):
             if board[i][j] == player or board[i][j] == player + 2:
                 regular_moves += get_regular_moves(board, player, i, j)
-                eating_moves += get_eating_moves(board, player, i, j)
+                eating_moves += get_multi_moves(board, player, i, j)
 
     if mandatory_eating == True:
         if eating_moves != []:
@@ -98,46 +127,51 @@ def get_possible_moves(board, player):
         moves.extend(regular_moves)
 
     # Sort moves based on their evaluation values
-    moves.sort(key=lambda move: evaluate(make_move(board, move)), reverse=True)
+    moves.sort(key=lambda move: evaluate(make_move(board, move), player), reverse=True)
 
     return moves
 
 def make_move(board, move):
     # Create a new board with the given move applied
     new_board = [row.copy() for row in board]
-    start, end = move
 
-    # Check if the move is an eating move
-    is_eating_move = abs(end[0] - start[0]) == 2
+    for index in range(len(move) - 1):
+        start = move[index]
+        end = move[index + 1]
 
-    # Move the piece to the new position
-    new_board[end[0]][end[1]] = new_board[start[0]][start[1]]
-    new_board[start[0]][start[1]] = 0
+        # Move the piece to the new position
+        new_board[end[0]][end[1]] = new_board[start[0]][start[1]]
+        new_board[start[0]][start[1]] = 0
 
-    # If it's an eating move, remove the captured piece
-    if is_eating_move:
-        mid_row, mid_col = (start[0] + end[0]) // 2, (start[1] + end[1]) // 2
-        new_board[mid_row][mid_col] = 0
+        # Check if the move is an eating move
+        is_eating_move = abs(end[0] - start[0]) == 2
 
-    # Check for king promotion
-    if end[0] == 7 and new_board[end[0]][end[1]] == PLAYER_1:
-        new_board[end[0]][end[1]] = KING_1
-    elif end[0] == 0 and new_board[end[0]][end[1]] == PLAYER_2:
-        new_board[end[0]][end[1]] = KING_2
+        # If it's an eating move, remove the captured piece
+        if is_eating_move:
+            mid_row, mid_col = (start[0] + end[0]) // 2, (start[1] + end[1]) // 2
+            new_board[mid_row][mid_col] = 0
+
+        # Check for king promotion
+        if end[0] == 7 and new_board[end[0]][end[1]] == PLAYER_1:
+            new_board[end[0]][end[1]] = KING_1
+        elif end[0] == 0 and new_board[end[0]][end[1]] == PLAYER_2:
+            new_board[end[0]][end[1]] = KING_2
+
+
 
     return new_board
 
 
 
-def minimax(board, depth, alpha, beta, maximizing_player):
+def minimax(board, depth, alpha, beta, maximizing_player, current_player):
     if depth == 0 or not any(PLAYER_1 in row or PLAYER_2 in row for row in board):
-        return evaluate(board)
+        return evaluate(board, current_player)
 
     if maximizing_player:
         max_eval = float('-inf')
         for move in get_possible_moves(board, current_player):
             new_board = make_move(board, move)
-            eval = minimax(new_board, depth - 1, alpha, beta, False)
+            eval = minimax(new_board, depth - 1, alpha, beta, False, current_player)
             max_eval = max(max_eval, eval)
             alpha = max(alpha, eval)
             if beta <= alpha:
@@ -147,7 +181,7 @@ def minimax(board, depth, alpha, beta, maximizing_player):
         min_eval = float('inf')
         for move in get_possible_moves(board, 3 - current_player):
             new_board = make_move(board, move)
-            eval = minimax(new_board, depth - 1, alpha, beta, True)
+            eval = minimax(new_board, depth - 1, alpha, beta, True, current_player)
             min_eval = min(min_eval, eval)
             beta = min(beta, eval)
             if beta <= alpha:
@@ -155,8 +189,7 @@ def minimax(board, depth, alpha, beta, maximizing_player):
         return min_eval
 
 
-def get_best_move(board):
-    global current_player
+def get_best_move(board, current_player):
     best_moves = []
     best_val = float('-inf')
     alpha = float('-inf')
@@ -164,7 +197,7 @@ def get_best_move(board):
 
     for move in get_possible_moves(board, current_player):
         new_board = make_move(board, move)
-        move_val = minimax(new_board, search_depth - 1, alpha, beta, False)
+        move_val = minimax(new_board, search_depth - 1, alpha, beta, False, current_player)
 
         if move_val > best_val:
             best_val = move_val
@@ -172,9 +205,8 @@ def get_best_move(board):
         elif move_val == best_val:
             best_moves.append(move)
 
-        print(f"Move: {move}, Evaluation Value: {move_val}")
+        ##print(f"Move: {move}, Evaluation Value: {move_val}")
 
-    print("Best Moves: ", best_moves)
     return random.choice(best_moves) if best_moves else None
 
 
@@ -183,27 +215,3 @@ def print_board(board):
     for row in board:
         print(" ".join(str(cell) for cell in row))
 
-
-# Sample checkerboard matrix
-sample_board = [
-    [1, 0, 1, 0, 1, 0, 1, 0],
-    [0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 2, 0, 2, 0, 2, 0, 2],
-    [2, 0, 2, 0, 2, 0, 2, 0],
-    [0, 2, 0, 2, 0, 2, 0, 2]
-]
-
-# Example of setting global variables
-current_player = PLAYER_1  # Set to PLAYER_1 or PLAYER_2 based on the current player
-search_depth = 8
-mandatory_eating = False  # Set to True to make eating a piece mandatory
-
-
-# Get the best move
-best_move = get_best_move(sample_board)
-print("best move", best_move)
-
-print_board(make_move(sample_board, best_move))

@@ -4,8 +4,7 @@ import random
 ## LOWER PART OF THE MATRIX IS ALWAYS 0
 
 ##THIS IMPLEMENTS THE CHECKERS GAME
-    ## DOES: KINGS
-    ## DOES NOT: MULTI EATING
+    ## DOES: KINGS; MULTI EATING
 
 # Constants for players
 PLAYER_1 = 1
@@ -14,7 +13,7 @@ KING_1 = 3
 KING_2 = 4
 
 # Example of setting global variables
-search_depth = 6
+search_depth = 3
 mandatory_eating = True  # Set to True to make eating a piece mandatory
 
 def evaluate(board, current_player):
@@ -79,6 +78,33 @@ def get_eating_moves(board, player, row, col):
 
     return moves
 
+def get_recursive_eating_moves(board, player, row, col):
+    moves = []
+
+    eating_moves = get_eating_moves(board, player, row, col)
+    for move in eating_moves:
+        new_matrix = make_move(board, move)
+        recursive_moves = get_recursive_eating_moves(new_matrix, player, move[1][0], move[1][1])
+
+        # Flatten the nested tuple structure
+        if recursive_moves:
+            moves.append((move,) + recursive_moves[0])
+        else:
+            moves.append((move,))
+
+    return moves
+
+def get_multi_moves(board, player, row, col):
+    moves = []
+    recursive_moves = get_recursive_eating_moves(board, player, row, col)
+    for move in recursive_moves:
+        updated_move = []
+        updated_move.append(move[0][0])
+        for submove in move:
+            updated_move.append(submove[1])
+        moves.append(tuple(updated_move))
+    return moves
+
 
 def get_possible_moves(board, player):
     moves = []
@@ -89,7 +115,7 @@ def get_possible_moves(board, player):
         for j in range(8):
             if board[i][j] == player or board[i][j] == player + 2:
                 regular_moves += get_regular_moves(board, player, i, j)
-                eating_moves += get_eating_moves(board, player, i, j)
+                eating_moves += get_multi_moves(board, player, i, j)
 
     if mandatory_eating == True:
         if eating_moves != []:
@@ -108,25 +134,30 @@ def get_possible_moves(board, player):
 def make_move(board, move):
     # Create a new board with the given move applied
     new_board = [row.copy() for row in board]
-    start, end = move
 
-    # Check if the move is an eating move
-    is_eating_move = abs(end[0] - start[0]) == 2
+    for index in range(len(move) - 1):
+        start = move[index]
+        end = move[index + 1]
 
-    # Move the piece to the new position
-    new_board[end[0]][end[1]] = new_board[start[0]][start[1]]
-    new_board[start[0]][start[1]] = 0
+        # Move the piece to the new position
+        new_board[end[0]][end[1]] = new_board[start[0]][start[1]]
+        new_board[start[0]][start[1]] = 0
 
-    # If it's an eating move, remove the captured piece
-    if is_eating_move:
-        mid_row, mid_col = (start[0] + end[0]) // 2, (start[1] + end[1]) // 2
-        new_board[mid_row][mid_col] = 0
+        # Check if the move is an eating move
+        is_eating_move = abs(end[0] - start[0]) == 2
 
-    # Check for king promotion
-    if end[0] == 7 and new_board[end[0]][end[1]] == PLAYER_1:
-        new_board[end[0]][end[1]] = KING_1
-    elif end[0] == 0 and new_board[end[0]][end[1]] == PLAYER_2:
-        new_board[end[0]][end[1]] = KING_2
+        # If it's an eating move, remove the captured piece
+        if is_eating_move:
+            mid_row, mid_col = (start[0] + end[0]) // 2, (start[1] + end[1]) // 2
+            new_board[mid_row][mid_col] = 0
+
+        # Check for king promotion
+        if end[0] == 7 and new_board[end[0]][end[1]] == PLAYER_1:
+            new_board[end[0]][end[1]] = KING_1
+        elif end[0] == 0 and new_board[end[0]][end[1]] == PLAYER_2:
+            new_board[end[0]][end[1]] = KING_2
+
+
 
     return new_board
 
@@ -183,6 +214,4 @@ def get_best_move(board, current_player):
 def print_board(board):
     for row in board:
         print(" ".join(str(cell) for cell in row))
-
-
 
