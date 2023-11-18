@@ -143,7 +143,8 @@ def capture_image_from_webcam():
 
         cv2.circle(frame, (height//2, width//2), 2, (0, 255, 0), -1)
 
-        cv2.imshow("Webcam Feed", frame)
+
+        cv2.imshow("Webcam Feed",frame)
 
     cap.release()
     cv2.destroyAllWindows()

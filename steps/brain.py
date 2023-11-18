@@ -13,7 +13,7 @@ KING_1 = 3
 KING_2 = 4
 
 # Example of setting global variables
-search_depth = 3
+search_depth = 8
 mandatory_eating = True  # Set to True to make eating a piece mandatory
 
 def evaluate(board, current_player):
@@ -103,8 +103,16 @@ def get_multi_moves(board, player, row, col):
         for submove in move:
             updated_move.append(submove[1])
         moves.append(tuple(updated_move))
-    return moves
 
+    if mandatory_eating == True:
+        return moves
+    else:
+        expanded_moves = []
+        for move in moves:
+            combinations = [tuple(move[:i+1]) for i in range(len(move))]
+            for index in range(len(combinations)-1):
+                expanded_moves.append(combinations[index+1])
+        return expanded_moves
 
 def get_possible_moves(board, player):
     moves = []
@@ -214,4 +222,5 @@ def get_best_move(board, current_player):
 def print_board(board):
     for row in board:
         print(" ".join(str(cell) for cell in row))
+
 
