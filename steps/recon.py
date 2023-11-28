@@ -238,38 +238,56 @@ def rgb_to_grayscale(color):
 
 
 
-def main():
+# Main function
+def main_recon():
+    # Capture an image from the webcam
     captured_image = capture_image_from_webcam()
+
     if captured_image is not None:
+        # Detect straight edges in the captured image
         lines = detect_straight_edges_in_image(captured_image)
         width, height, channels = captured_image.shape
+
+        # Detect closest lines to the edges of the board
         closest_lines = detect_board_edges(lines, width, height)
+
+        # Find intersection points of the closest lines
         corners = find_intersections(closest_lines)
+
+        # Order corners based on their positions
         ordered_corners = order_corners(corners, width, height)
+
+        # Get a warped image of the checkers board
         image = get_board(captured_image, ordered_corners, width, height)
 
-
-
+        # Display the warped image
         cv2.imshow("Webcam Feed", image)
-
         cv2.waitKey(0)
 
+        # Get dimensions of the warped image
         width, height, channels = image.shape
+
+        # Divide the image into tiles
         tiles = divide_image_into_tiles(image, width, height)
 
+        # Initialize a matrix to represent the checkers on the board
         checker_matrix = np.zeros((8, 8), dtype=int)
 
+        # Analyze each tile for a round object (checker)
         for i, tile in enumerate(tiles):
             result_tile, object_count, objects = analyze_tile_for_round_object(tile)
 
             if object_count > 0:
+                # Extract information about the detected checker
                 circle = objects[0, 0]
                 x, y, radius = circle
 
+                # Analyze the color of the checker
                 color = rgb_to_grayscale(analyse_checker_color(tile, (x, y), radius * 0.9))
 
                 print(color)
 
+                # Update the checker matrix based on the color
                 if color < 70:
                     checker_matrix[i // 8][i % 8] = 1
                 else:
@@ -282,5 +300,4 @@ def main():
     else:
         print("Image capture failed")
 
-
-main()
+main_recon()
