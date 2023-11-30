@@ -168,34 +168,65 @@ def order_corners(corners, width, height):
 
     return ordered
 
-def get_board(image, corners, width, height):
+def get_board(image, corners, width, height, margin):
     # Init distortion variables
     pts1 = np.float32(corners)
     pts2 = np.float32([[0, 0], [0, height], [width, height], [width, 0]])
         
-    # Distort image to square
+    # Distort image to square with margin
     matrix = cv2.getPerspectiveTransform(pts1, pts2)
     image = cv2.warpPerspective(image, matrix, (width, height))
 
     # Resize to the desired output size
     image = cv2.resize(image, (800, 800), interpolation=cv2.INTER_CUBIC)
 
-    return image
+    avg_color = np.mean(image, axis=(0, 1))
 
-def divide_image_into_tiles(image, width, height):
-    tile_height = image.shape[0] // 8
-    tile_width = image.shape[1] // 8
+    # Round the average color values to integers
+    avg_color = tuple(np.round(avg_color).astype(int))
+
+    blank_image = np.full((800+2*margin, 800+2*margin, 3), avg_color, dtype=np.uint8)
+
+
+    # Ensure the overlay image is not larger than the base image
+    overlay_height, overlay_width = image.shape[:2]
+    base_height, base_width = blank_image.shape[:2]
+
+    if overlay_height > base_height or overlay_width > base_width:
+        print("Error: Overlay image is larger than the base image.")
+        return None
+
+    # Calculate the position to center the overlay image on the base image
+    y_position = (base_height - overlay_height) // 2
+    x_position = (base_width - overlay_width) // 2
+
+    # Create a copy of the base image
+    result = blank_image.copy()
+
+    # Overlay the smaller image onto the larger image
+    result[y_position:y_position + overlay_height, x_position:x_position + overlay_width] = image
+
+    return result
+
+def divide_image_into_tiles(image, width, height, margin):
+    tile_height = (height - 2 * margin) // 8
+    tile_width = (width - 2 * margin) // 8
+
+    newmargin = margin // 2
 
     tiles = []
     for i in range(8):
         for j in range(8):
-            y_start = i * tile_height
-            y_end = (i + 1) * tile_height
-            x_start = j * tile_width
-            x_end = (j + 1) * tile_width
+            y_start = i * tile_height + margin - newmargin
+            y_end = (i + 1) * tile_height + margin + newmargin
+            x_start = j * tile_width + margin - newmargin
+            x_end = (j + 1) * tile_width + margin + newmargin
+
             tile = image[y_start:y_end, x_start:x_end]
+
             tiles.append(tile)
     return tiles
+
 
 def analyze_tile_for_round_object(tile):
     gray_tile = cv2.cvtColor(tile, cv2.COLOR_BGR2GRAY)
@@ -257,8 +288,10 @@ def main_recon():
         # Order corners based on their positions
         ordered_corners = order_corners(corners, width, height)
 
+        margin = 50
+
         # Get a warped image of the checkers board
-        image = get_board(captured_image, ordered_corners, width, height)
+        image = get_board(captured_image, ordered_corners, width, height, margin)
 
         # Display the warped image
         cv2.imshow("Webcam Feed", image)
@@ -268,13 +301,19 @@ def main_recon():
         width, height, channels = image.shape
 
         # Divide the image into tiles
-        tiles = divide_image_into_tiles(image, width, height)
+        tiles = divide_image_into_tiles(image, width, height, margin)
+
+        for i, tile in enumerate(tiles):
+        # Convert the image data type to uint8 if needed
+            imageshow = np.array(tile)
+            cv2.imwrite('steps/output/' + str(i) + '.png', imageshow)
 
         # Initialize a matrix to represent the checkers on the board
         checker_matrix = np.zeros((8, 8), dtype=int)
 
         # Analyze each tile for a round object (checker)
         for i, tile in enumerate(tiles):
+
             result_tile, object_count, objects = analyze_tile_for_round_object(tile)
 
             if object_count > 0:
