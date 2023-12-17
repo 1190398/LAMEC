@@ -13,7 +13,7 @@ KING_1 = 3
 KING_2 = 4
 
 # Example of setting global variables
-search_depth = 8
+search_depth = 6
 mandatory_eating = True  # Set to True to make eating a piece mandatory
 
 def evaluate(board, current_player):
@@ -213,7 +213,7 @@ def get_best_move(board, current_player):
         elif move_val == best_val:
             best_moves.append(move)
 
-        ##print(f"Move: {move}, Evaluation Value: {move_val}")
+        #print(f"Move: {move}, Evaluation Value: {move_val}")
 
     return random.choice(best_moves) if best_moves else None
 
@@ -222,5 +222,3 @@ def get_best_move(board, current_player):
 def print_board(board):
     for row in board:
         print(" ".join(str(cell) for cell in row))
-
-

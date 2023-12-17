@@ -33,6 +33,8 @@ def play():
     # Get the best move
     best_move = get_best_move(sample_board, player)
 
+    print(best_move)
+
     if best_move is not None:
         if player == 1:
             player = 2

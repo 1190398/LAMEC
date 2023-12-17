@@ -18,46 +18,45 @@ def initialize_serial_connection(port):
     ser.timeout = 2
     return ser
 
-def notify_microcontroller(serial_connection):
-    serial_connection.write(b'R')
-    time.sleep(0.1)
-
-def build_move_string(move, remove):
-    string = 'move/'
+def build_move_string(moveTupple):
+    move = []
+    remove = []
+    for index in range(len(moveTupple)):
+        
+    string = ''
     
     for index in range(len(move)):
         x, y = move[index]
-        string += (str(x) + '-' + str(y) + '/')
+        string += (str(x) + '-' + str(y))
+        if index != len(move)-1:
+            string += '/'
 
     if remove is not None:
-        string += 'remove/'
+        string += '*'
         for index in range(len(remove)):
             x, y = remove[index]
-            string += (str(x) + '-' + str(y) + '/')
+            string += (str(x) + '-' + str(y))
+            if index != len(remove)-1:
+                string += '/'
 
     return string
 
 def send_move(serial_connection, move):
     serial_connection.write(move)
 
-# Choose the COM port dynamically
-#chosen_port = choose_serial_port()
+def wait_for_start(serial_connection):
+    while True:
+        # Wait for data from the serial port
+        if serial_connection.in_waiting > 0:
+            received_data = serial_connection.readline().decode().strip()
 
-# Initialize the serial connection
-#serial_connection = initialize_serial_connection(chosen_port)
+            # Check if the received data is the "start" signal
+            if received_data == "start":
+                print("Received 'start' signal from the microcontroller.")
+                break
+            else:
+                print(f"Unexpected data received: {received_data}")
 
-# Example move
-move = ((4, 5), (6, 7))
-remove = [(5, 6)]
+        # Add a small delay to avoid high CPU usage in the loop
+        time.sleep(0.1)
 
-# Notify microcontroller
-#notify_microcontroller(serial_connection)
-
-# Build and send move string
-move_string = build_move_string(move, remove)
-print(move_string)
-#send_move(serial_connection, move_string)
-
-# Close the serial connection when done
-
-#serial_connection.close()

@@ -168,51 +168,34 @@ def order_corners(corners, width, height):
 
     return ordered
 
-def get_board(image, corners, width, height, margin):
-    # Init distortion variables
-    pts1 = np.float32(corners)
-    pts2 = np.float32([[0, 0], [0, height], [width, height], [width, 0]])
-        
-    # Distort image to square with margin
-    matrix = cv2.getPerspectiveTransform(pts1, pts2)
-    image = cv2.warpPerspective(image, matrix, (width, height))
+def get_board(img, corners, margin):
+    # Convert corners to NumPy array
+    src_points = np.array(corners, dtype=np.float32)
 
-    # Resize to the desired output size
-    image = cv2.resize(image, (800, 800), interpolation=cv2.INTER_CUBIC)
+    # Define the square points in the destination image to cover the entire output image
+    dst_points = np.array([
+        [margin, margin],
+        [800 + margin - 1, margin],
+        [800 + margin - 1, 800 + margin - 1],
+        [margin, 800 + margin - 1]
+    ], dtype=np.float32)
+    # Find the homography matrix
+    matrix, _ = cv2.findHomography(src_points, dst_points)
 
-    avg_color = np.mean(image, axis=(0, 1))
+    # Apply the perspective transformation without cropping
+    distorted_img = cv2.warpPerspective(img, matrix, (900, 900), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
 
-    # Round the average color values to integers
-    avg_color = tuple(np.round(avg_color).astype(int))
+    distorted_img_resized = cv2.resize(distorted_img, (800, 800))
 
-    blank_image = np.full((800+2*margin, 800+2*margin, 3), avg_color, dtype=np.uint8)
+    rotated_image = cv2.rotate(distorted_img_resized, cv2.ROTATE_90_CLOCKWISE)
 
-
-    # Ensure the overlay image is not larger than the base image
-    overlay_height, overlay_width = image.shape[:2]
-    base_height, base_width = blank_image.shape[:2]
-
-    if overlay_height > base_height or overlay_width > base_width:
-        print("Error: Overlay image is larger than the base image.")
-        return None
-
-    # Calculate the position to center the overlay image on the base image
-    y_position = (base_height - overlay_height) // 2
-    x_position = (base_width - overlay_width) // 2
-
-    # Create a copy of the base image
-    result = blank_image.copy()
-
-    # Overlay the smaller image onto the larger image
-    result[y_position:y_position + overlay_height, x_position:x_position + overlay_width] = image
-
-    return result
+    return rotated_image
 
 def divide_image_into_tiles(image, width, height, margin):
     tile_height = (height - 2 * margin) // 8
     tile_width = (width - 2 * margin) // 8
 
-    newmargin = margin // 2
+    newmargin = margin // 3
 
     tiles = []
     for i in range(8):
@@ -240,6 +223,7 @@ def analyze_tile_for_round_object(tile):
             cv2.circle(tile, (circle[0], circle[1]), 2, (0, 0, 255), 3)
 
     return tile, len(circles) if circles is not None else 0, circles
+
 
 def analyse_checker_color(tile, center, radius):
     # Ensure integer values for center and radius
@@ -291,7 +275,7 @@ def main_recon():
         margin = 50
 
         # Get a warped image of the checkers board
-        image = get_board(captured_image, ordered_corners, width, height, margin)
+        image = get_board(captured_image, ordered_corners, margin)
 
         # Display the warped image
         cv2.imshow("Webcam Feed", image)
@@ -327,13 +311,15 @@ def main_recon():
                 print(color)
 
                 # Update the checker matrix based on the color
-                if color < 70:
-                    checker_matrix[i // 8][i % 8] = 1
+                if color < 100:
+                    checker_matrix[i % 8][i // 8] = 1
                 else:
-                    if color > 150:
-                        checker_matrix[i // 8][i % 8] = 2
+                    if color >= 100:
+                        checker_matrix[i % 8][i // 8] = 2
+                    else:
+                        checker_matrix[i % 8][i // 8] = '-'
 
-        print(checker_matrix)
+        #print(checker_matrix)
 
         return checker_matrix
     else:
