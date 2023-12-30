@@ -14,48 +14,67 @@ def choose_serial_port():
     return chosen_port
 
 def initialize_serial_connection(port):
-    ser = serial.Serial(port, 9600)
-    ser.timeout = 2
+    ser = serial.Serial('COM'+str(port), 9600)
     return ser
 
 def build_move_string(moveTupple):
-    move = []
     remove = []
-    for index in range(len(moveTupple)):
-        
+    for index in range(len(moveTupple)-1):
+        x1, y1 = moveTupple[index]
+        x2, y2 = moveTupple[index+1]
+
+        # Transform y-coordinates for endpoints
+        #y1 = 7 - y1
+        #y2 = 7 - y2
+
+        middle_x = (x1 + x2) // 2
+        middle_y = (y1 + y2) // 2
+
+        # Check if the move is an eating move
+        is_eating_move = abs(x1 - x2) == 2
+
+        if is_eating_move:
+            remove.append((middle_x, middle_y))
+
     string = ''
-    
-    for index in range(len(move)):
-        x, y = move[index]
+
+    for index in range(len(moveTupple)):
+        x, y = moveTupple[index]
+        # Transform y-coordinate for endpoints
+        y = 7 - y
         string += (str(x) + '-' + str(y))
-        if index != len(move)-1:
+        if index != len(moveTupple)-1:
             string += '/'
 
-    if remove is not None:
+    if len(remove) > 0:
         string += '*'
         for index in range(len(remove)):
             x, y = remove[index]
+            # Transform y-coordinate for middle points
+            y = 7 - y
             string += (str(x) + '-' + str(y))
             if index != len(remove)-1:
                 string += '/'
 
+    string += '\0'
     return string
 
-def send_move(serial_connection, move):
-    serial_connection.write(move)
 
-def wait_for_start(serial_connection):
+def send_move(serial_connection, move):
+    print(move)
+    serial_connection.write(move.encode())
+
+def wait_for_command(serial_connection, command):
     while True:
         # Wait for data from the serial port
         if serial_connection.in_waiting > 0:
             received_data = serial_connection.readline().decode().strip()
 
-            # Check if the received data is the "start" signal
-            if received_data == "start":
-                print("Received 'start' signal from the microcontroller.")
+            if received_data == command:
+                print(f"Command: {command}")
                 break
             else:
-                print(f"Unexpected data received: {received_data}")
+                print(received_data)
 
         # Add a small delay to avoid high CPU usage in the loop
         time.sleep(0.1)

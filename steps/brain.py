@@ -1,7 +1,7 @@
 import random
 
 ## UPPER PART OF THE MATRIX IS ALWAYS 1
-## LOWER PART OF THE MATRIX IS ALWAYS 0
+## LOWER PART OF THE MATRIX IS ALWAYS 2
 
 ##THIS IMPLEMENTS THE CHECKERS GAME
     ## DOES: KINGS; MULTI EATING
@@ -13,7 +13,7 @@ KING_1 = 3
 KING_2 = 4
 
 # Example of setting global variables
-search_depth = 6
+search_depth = 8
 mandatory_eating = True  # Set to True to make eating a piece mandatory
 
 def evaluate(board, current_player):

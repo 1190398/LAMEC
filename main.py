@@ -1,119 +1,48 @@
-# main.py
 import tkinter as tk
-from util.drawBoard import create_board, redraw_board, run_mainloop
-from steps.brain import get_best_move, make_move, print_board
-from steps.main_serial import choose_serial_port, initialize_serial_connection, wait_for_start, build_move_string, send_move
-from steps.recon import main_recon
-import random
-
-# Sample checkerboard matrix
-sample_board = [
-    [0, 1, 0, 1, 0, 1, 0, 1],
-    [1, 0, 1, 0, 1, 0, 1, 0],
-    [0, 1, 0, 1, 0, 1, 0, 1],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [2, 0, 2, 0, 2, 0, 2, 0],
-    [0, 2, 0, 2, 0, 2, 0, 2],
-    [2, 0, 2, 0, 2, 0, 2, 0]
-]
-
-matrix = [
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0]
-]
-
-root = tk.Tk()
-board = create_board(root)
-
-# Initialize the board with the sample matrix
-redraw_board(board, sample_board)
-
-playDelay = 300
-
-player = random.choice([1, 2])
-score1 = 0
-score2 = 0
+from steps.brain import get_best_move, print_board
+from steps.serial import choose_serial_port, initialize_serial_connection, wait_for_command, build_move_string, send_move
+from steps.recon import main_recon, setup_web_cam
+import time
 
 # Choose the COM port dynamically
 #chosen_port = choose_serial_port()
 
+chosen_port = 3
+
 # Initialize the serial connection
-#serial_connection = initialize_serial_connection(chosen_port)
+serial_connection = initialize_serial_connection(chosen_port)
 
-#player = choosePlayer()
+#setup_web_cam()
 
-def play():
-    global player, sample_board, score1, score2
+player = 1
+score1 = 0
+score2 = 0
 
-    if player == 1: #robot
+while True:
 
-        matrix = main_recon()
+    # Wait for the "start" signal
+    wait_for_command(serial_connection, "/start")
 
-        # Get the best move
-        best_move = get_best_move(matrix, player)
+    matrix = main_recon()
 
-        print(best_move)
+    time.sleep(0.5)
+    
+    # Get the best move
+    best_move = get_best_move(matrix, player)
 
-        # Build and send move string
-        #move_string = build_move_string(move, remove)
+    time.sleep(0.5)
 
-        #send_move(serial_connection, move_string)
+    # Build and send move string
+    move_string = build_move_string(best_move)
 
-    elif player == 2: #human
-        # Call the function to wait for the "start" signal
-        #wait_for_start(serial_connection)
+    time.sleep(0.5)
 
-        matrix = main_recon()
+    # Uncomment the line below if you want to send the move
+    send_move(serial_connection, move_string)
 
-    if best_move is not None:
-        if player == 1:
-            player = 2
-        elif player == 2:
-            player = 1
+    time.sleep(0.5)
 
-        matrix = make_move(matrix, best_move)
-
-        # Update the board with the new matrix
-        redraw_board(board, matrix)
-
-    else:
-        if player == 1:
-            score1 += 1
-        elif player == 2:
-            score2 += 1
-
-        # Print the final score
-        print(f"\rScore: {score1} vs {score2}", end="")
-
-# Function to start the game when Enter key is pressed
-def start_game(event):
-    global matrix
-    matrix = [
-        [0, 1, 0, 1, 0, 1, 0, 1],
-        [1, 0, 1, 0, 1, 0, 1, 0],
-        [0, 1, 0, 1, 0, 1, 0, 1],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [2, 0, 2, 0, 2, 0, 2, 0],
-        [0, 2, 0, 2, 0, 2, 0, 2],
-        [2, 0, 2, 0, 2, 0, 2, 0]
-    ]
-    play()
-
-# Bind the start_game function to the Enter key
-root.bind("<Return>", start_game)
-
-# Run the main loop
-run_mainloop(root)
-
+    wait_for_command(serial_connection, "/end")
 
 # Close the serial connection when done
-
-#serial_connection.close()
+serial_connection.close()
