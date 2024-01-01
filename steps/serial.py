@@ -61,8 +61,9 @@ def build_move_string(moveTupple):
 
 
 def send_move(serial_connection, move):
-    print(move)
-    serial_connection.write(move.encode())
+    move_with_newline = move + '\n'
+    serial_connection.write(move_with_newline.encode())
+
 
 def wait_for_command(serial_connection, command):
     while True:

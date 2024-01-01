@@ -15,6 +15,7 @@ KING_2 = 4
 # Example of setting global variables
 search_depth = 8
 mandatory_eating = True  # Set to True to make eating a piece mandatory
+diagonal_eating = True # Set to True to make kings eat along all the
 
 def evaluate(board, current_player):
     score_player_1 = 0
@@ -49,7 +50,32 @@ def get_regular_moves(board, player, row, col):
     elif board[row][col] == PLAYER_2:
         directions = [(-1, -1), (-1, 1)]
     else:
-        directions = [(1, -1), (1, 1), (-1, -1), (-1, 1)]
+        if diagonal_eating:
+            directions = []
+            flag = True
+            for i in range(8-row):
+                for j in range(8-col):
+                    if flag and i == j:
+                        if board[row+i][col+j] == 0:
+                            directions.append((i, j))
+                        if board[row][col] == KING_1 and (board[row][col] == PLAYER_1):
+                            flag = False
+                        if board[row][col] == KING_2 and (board[row][col] == PLAYER_2):
+                            flag = False
+                            
+            flag = True
+            for i in range(8-row):
+                for j in range(8-col):
+                    if flag and i == j:
+                        if board[row+i][col+j] == 0:
+                            directions.append((i, j))
+                        if board[row][col] == KING_1 and (board[row][col] == PLAYER_1):
+                            flag = False
+                        if board[row][col] == KING_2 and (board[row][col] == PLAYER_2):
+                            flag = False
+
+        else:
+            directions = [(1, -1), (1, 1), (-1, -1), (-1, 1)]
 
     for dir_row, dir_col in directions:
         new_row, new_col = row + dir_row, col + dir_col

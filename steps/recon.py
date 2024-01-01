@@ -16,10 +16,10 @@ def detect_straight_edges_in_image(image):
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 
     # Perform Canny edge detection
-    edges = cv2.Canny(blurred, 50, 150, apertureSize=3)
+    edges = cv2.Canny(blurred, 50, 105, apertureSize=3)
 
     # Perform Hough Line Transform
-    lines = cv2.HoughLines(edges, 1, np.pi / 180, 90)
+    lines = cv2.HoughLines(edges, 1, np.pi / 180, 100)
     
     lines_coor = []
 
@@ -117,19 +117,25 @@ def find_intersections(closest_lines):
 
     return intersections
 
-# Function to capture an image from the webcam feed
+# Function to capture a specific frame from the webcam feed
 def capture_image_from_webcam():
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(2)
 
-    ret, frame = cap.read()
+    frame_number = 0
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to capture a frame")
+            break
 
-    if not ret:
-        print("Failed to capture a frame")
-        cap.release()
-        return None
+        frame_number += 1
+
+        if frame_number == 20:
+            break
 
     cap.release()
     return frame
+
 
 def order_corners(corners, width, height):
     temp = []
@@ -195,16 +201,26 @@ def divide_image_into_tiles(image, width, height, margin):
 def analyze_tile_for_round_object(tile):
     gray_tile = cv2.cvtColor(tile, cv2.COLOR_BGR2GRAY)
 
-    circles = cv2.HoughCircles(gray_tile, cv2.HOUGH_GRADIENT, dp=1, minDist=30, param1=40, param2=30, minRadius=28, maxRadius=40)
+
+    # Adjusted HoughCircles parameters
+    circles = cv2.HoughCircles(
+        gray_tile, cv2.HOUGH_GRADIENT, dp=1, minDist=30,
+        param1=30,  # Adjust based on your image contrast
+        param2=29,  # Adjust based on your image contrast
+        minRadius=30, maxRadius=50
+    )
 
     if circles is not None:
+        # Perform additional analysis on the detected circles if needed
+
         circles = np.uint16(np.around(circles))
         for circle in circles[0, :]:
             cv2.circle(tile, (circle[0], circle[1]), circle[2], (0, 255, 0), 2)
             cv2.circle(tile, (circle[0], circle[1]), 2, (0, 0, 255), 3)
 
-    return tile, len(circles) if circles is not None else 0, circles
+    print(circles)
 
+    return tile, len(circles) if circles is not None else 0, circles
 
 
 def analyse_checker_color(tile, center, radius):
@@ -220,47 +236,31 @@ def analyse_checker_color(tile, center, radius):
     mask_small = np.zeros_like(tile, dtype=np.uint8)
     cv2.circle(mask_small, center, int(radius / 3), (255, 255, 255), thickness=cv2.FILLED)
 
-    # Create a mask for the hole circular region
-    mask_hole = np.zeros_like(tile, dtype=np.uint8)
-    cv2.circle(mask_hole, center, int(radius / 5), (255, 255, 255), thickness=cv2.FILLED)
-
-
     # Resize the smaller circular mask to match the size of the larger one
-    mask_outer_circular = cv2.resize(mask_small, (mask_large.shape[1], mask_large.shape[0]))
+    mask_circular_middle = cv2.resize(mask_small, (mask_large.shape[1], mask_large.shape[0]))
 
     # Subtract the smaller circular region from the larger one
-    mask_circular_outer = cv2.subtract(mask_large, mask_outer_circular)
+    mask_circular_outer = cv2.subtract(mask_large, mask_circular_middle)
 
     # Extract the circular region without bitwise operations
     circular_region_outer = tile * (mask_circular_outer > 0)
 
-
-    # Resize the smaller circular mask to match the size of the larger one
-    mask_middle_circular = cv2.resize(mask_hole, (mask_small.shape[1], mask_small.shape[0]))
-
-    # Subtract the smaller circular region from the larger one
-    mask_circular_middle = cv2.subtract(mask_small, mask_middle_circular)
-
     # Extract the circular region without bitwise operations
     circular_region_middle = tile * (mask_circular_middle > 0)
 
-
-    # Calculate the average color in the circular region
+    # Calculate the average color for circular region and central area
     total_color_circular_outer = np.sum(circular_region_outer, axis=(0, 1))
     total_pixels_circular_outer = np.sum(mask_circular_outer[:, :, 0] > 0)  # Count non-zero pixels in the mask
 
-    # Calculate the average color in the circular region
     total_color_circular_middle = np.sum(circular_region_middle, axis=(0, 1))
     total_pixels_circular_middle = np.sum(mask_circular_middle[:, :, 0] > 0)  # Count non-zero pixels in the mask
 
-
-    # Calculate the average color for circular region and central area
+    # Calculate the average color for circular region and middle area
     average_color_circular_outer = total_color_circular_outer // total_pixels_circular_outer if total_pixels_circular_outer > 0 else (0, 0, 0)
     average_color_circular_middle = total_color_circular_middle // total_pixels_circular_middle if total_pixels_circular_middle > 0 else (0, 0, 0)
 
-
-    
     return tuple(average_color_circular_outer), tuple(average_color_circular_middle)
+
 
 
 def rgb_to_grayscale(rgb):
@@ -269,32 +269,6 @@ def rgb_to_grayscale(rgb):
     return grayscale_value
 
 
-def subtract_images(color_image):
-
-    # Read the image to be subtracted
-    subtract_image = cv2.imread('steps/init/init_image.png')
-
-    # Check if the images are of the same size
-    if color_image.shape != subtract_image.shape:
-        raise ValueError("Input images must have the same dimensions.")
-
-    # Subtract the second image from the first
-    result = cv2.subtract(color_image, subtract_image)
-
-    result = cv2.cvtColor(result, cv2.COLOR_BGR2GRAY)
-
-    #result = cv2.convertScaleAbs(result, alpha=5, beta=0)
-
-    # Display the result (optional)
-    cv2.imshow("Subtraction Result", result)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    return result
-
-def save_image(image):
-    # Save the image
-    cv2.imwrite('steps/init/init_image.png', image)
 
 def read_corners_from_file():
     try:
@@ -324,62 +298,50 @@ def main_recon():
             # Get dimensions of the warped image
             width, height, channels = image.shape
 
-            #sub_image = subtract_images(image)
-
             # Divide the image into tiles
             tiles = divide_image_into_tiles(image, width, height, margin)
 
+            # Initialize a matrix to represent the checkers on the board
+            checker_matrix = np.zeros((8, 8), dtype=int)
+
             for i, tile in enumerate(tiles):
                 try:
-                    # Convert the image data type to uint8 if needed
-                    imageshow = np.array(tile)
-                    cv2.imwrite('steps/output/' + str(i) + '.png', imageshow)
+                    
+                    result_tile, object_count, objects = analyze_tile_for_round_object(tile)
 
-                    # Initialize a matrix to represent the checkers on the board
-                    checker_matrix = np.zeros((8, 8), dtype=int)
+                    if object_count > 0:
+                        # Extract information about the detected checker
+                        circle = objects[0, 0]
+                        x, y, radius = circle
 
-                    # Analyze each tile for a round object (checker)
-                    for i, tile in enumerate(tiles):
-                        try:
-                            result_tile, object_count, objects = analyze_tile_for_round_object(tile)
+                        # Analyze the color of the checker
+                        outer_color, middle_color = analyse_checker_color(tile, (x, y), radius * 0.9)
 
-                            if object_count > 0:
-                                # Extract information about the detected checker
-                                circle = objects[0, 0]
-                                x, y, radius = circle
+                        # Convert RGB to grayscale
+                        outer_gray = rgb_to_grayscale(outer_color)
+                        middle_gray = rgb_to_grayscale(middle_color)
 
-                                # Analyze the color of the checker
-                                outer_color, middle_color = analyse_checker_color(tile, (x, y), radius * 0.9)
+                        print(str(outer_gray) + ' . ' + str(middle_gray))
 
-                                # Convert RGB to grayscale
-                                outer_gray = rgb_to_grayscale(outer_color)
-                                middle_gray = rgb_to_grayscale(middle_color)
-
-                                print(str(outer_gray) + ' . ' + str(middle_gray))
-
-                                if abs(outer_gray - middle_gray) < 40:  # not a queen
-                                    # Update the checker matrix based on the color
-                                    if outer_gray < 127:
-                                        checker_matrix[i % 8][i // 8] = 1
-                                    else:
-                                        checker_matrix[i % 8][i // 8] = 2
-                                else:  # its a queen
-                                    # Update the checker matrix based on the color
-                                    if outer_gray < 127:
-                                        checker_matrix[i % 8][i // 8] = 3
-                                    else:
-                                        checker_matrix[i % 8][i // 8] = 4
-
-                        except Exception as tile_analysis_exception:
-                            print(f"Error analyzing tile {i}: {tile_analysis_exception}")
-
-                    print(checker_matrix)
-
-                    return checker_matrix
+                        if abs(outer_gray - middle_gray) < 30:  # not a queen
+                            # Update the checker matrix based on the color
+                            if outer_gray < 150:
+                                checker_matrix[i % 8][i // 8] = 1
+                            else:
+                                checker_matrix[i % 8][i // 8] = 2
+                        else:  # its a queen
+                            # Update the checker matrix based on the color
+                            if outer_gray < 150:
+                                checker_matrix[i % 8][i // 8] = 3
+                            else:
+                                checker_matrix[i % 8][i // 8] = 4
 
                 except Exception as tile_save_exception:
                     print(f"Error saving tile {i}: {tile_save_exception}")
 
+            print(checker_matrix)
+            return checker_matrix
+        
         else:
             print("Image capture failed")
 
@@ -393,7 +355,7 @@ def save_corners_to_file(ordered_corners):
 # Function to capture an image from the webcam feed
 def setup_web_cam():
     try:
-        cap = cv2.VideoCapture(1)
+        cap = cv2.VideoCapture(2)
 
         while True:
             ret, frame = cap.read()
@@ -418,13 +380,6 @@ def setup_web_cam():
 
                 # Order corners based on their positions
                 ordered_corners = order_corners(corners, width, height)
-
-                margin = 50
-
-                # Get a warped image of the checkers board
-                image = get_board(frame, ordered_corners, margin)
-
-                save_image(image)
 
                 # Save the ordered corner coordinates to a file
                 save_corners_to_file(ordered_corners)
@@ -455,4 +410,64 @@ def setup_web_cam():
 
     except Exception as webcam_setup_exception:
         print(f"An error occurred in the setup_web_cam function: {webcam_setup_exception}")
+
+
+
+
+
+
+
+
+def is_checker_present(square_image, circularity_threshold=0.5, canny_lower_threshold=20, canny_upper_threshold=50):
+    cv2.imshow('Square with Circular Contours', square_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(square_image, cv2.COLOR_BGR2GRAY)
+
+    cv2.imshow('Square with Circular Contours', gray)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    # Apply GaussianBlur to reduce noise and help contour detection
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+
+    cv2.imshow('Square with Circular Contours', blurred)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+    # Use Canny edge detection to find edges in the image
+    edges = cv2.Canny(blurred, canny_lower_threshold, canny_upper_threshold)
+
+    # Find contours in the edged image
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Filter contours based on circularity
+    circular_contours = []
+    for contour in contours:
+        # Calculate circularity as (4 * pi * area) / (perimeter^2)
+        area = cv2.contourArea(contour)
+        perimeter = cv2.arcLength(contour, True)
+        circularity = (4 * np.pi * area) / (perimeter**2)
+
+        if circularity > circularity_threshold:
+            circular_contours.append(contour)
+
+
+    # If there are circular contours, a checker is likely present
+    if circular_contours:
+        print("Checker detected!")
+        # Draw contours for debugging (optional)
+        square_with_contours = square_image.copy()
+        cv2.drawContours(square_with_contours, circular_contours, -1, (0, 255, 0), 2)
+        cv2.imshow('Square with Circular Contours', square_with_contours)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        return True
+    else:
+        print("No checker detected.")
+        return False
+    
+main_recon()
 
