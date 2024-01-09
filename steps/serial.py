@@ -17,7 +17,7 @@ def initialize_serial_connection(port):
     ser = serial.Serial('COM'+str(port), 9600)
     return ser
 
-def build_move_string(moveTupple):
+def build_move_string(moveTupple, isQueen):
     remove = []
     for index in range(len(moveTupple)-1):
         x1, y1 = moveTupple[index]
@@ -56,6 +56,9 @@ def build_move_string(moveTupple):
             if index != len(remove)-1:
                 string += '/'
 
+    if isQueen:
+        string += "*T"
+
     string += '\0'
     return string
 
@@ -63,6 +66,7 @@ def build_move_string(moveTupple):
 def send_move(serial_connection, move):
     move_with_newline = move + '\n'
     serial_connection.write(move_with_newline.encode())
+    #print(move_with_newline)
 
 
 def wait_for_command(serial_connection, command):

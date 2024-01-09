@@ -15,7 +15,7 @@ KING_2 = 4
 # Example of setting global variables
 search_depth = 8
 mandatory_eating = True  # Set to True to make eating a piece mandatory
-diagonal_eating = True # Set to True to make kings eat along all the
+diagonal_eating = False # Set to True to make kings eat along all the
 
 def evaluate(board, current_player):
     score_player_1 = 0
@@ -241,7 +241,21 @@ def get_best_move(board, current_player):
 
         #print(f"Move: {move}, Evaluation Value: {move_val}")
 
-    return random.choice(best_moves) if best_moves else None
+    if best_moves:
+        
+        best_move = random.choice(best_moves)
+
+        x1, y1 = best_move[0]
+        x2, y2 = best_move[len(best_move) - 1]
+
+        isQueen = False
+
+        if x2 == 7 and board[x1][y1] == 1:
+            isQueen = True
+
+        return (best_move, isQueen)
+    else:
+        return None
 
 
 

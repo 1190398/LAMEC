@@ -28,12 +28,12 @@ while True:
     time.sleep(0.5)
     
     # Get the best move
-    best_move = get_best_move(matrix, player)
+    best_move, isQueen = get_best_move(matrix, player)
 
     time.sleep(0.5)
 
     # Build and send move string
-    move_string = build_move_string(best_move)
+    move_string = build_move_string(best_move, isQueen)
 
     time.sleep(0.5)
 

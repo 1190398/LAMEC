@@ -323,7 +323,7 @@ def main_recon():
 
                         print(str(outer_gray) + ' . ' + str(middle_gray))
 
-                        if abs(outer_gray - middle_gray) < 30:  # not a queen
+                        if abs(outer_gray - middle_gray) < 60:  # not a queen
                             # Update the checker matrix based on the color
                             if outer_gray < 150:
                                 checker_matrix[i % 8][i // 8] = 1
